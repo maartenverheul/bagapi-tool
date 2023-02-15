@@ -10,7 +10,7 @@
 # Take a look at the following case. Thanks to an API many
 # manhours can be spend in a better way. And boi is it fast.
 #
-# By the way, this script is version 1.5
+# By the way, this script is version 1.6
 # and is made by Maarten Verheul
 #
 # So, fasten your seatbelts, he we go:
@@ -305,10 +305,10 @@ with open('output.csv', 'w', newline='') as csvfile:
 # User notification
 
 print("Processing done!")
-print("- Written {0} rows ({1} failed rows were not written)".format(len(output_rows), len(output_failures)))
+print("- Written {0} csv rows ({1} failed rows were not written)".format(len(output_rows), len(output_failures)))
 
 if len(output_failures) > 0:
-  print("- Failed rows: " + ", ".join(map(str,output_failures)))
+  print("- Failed input row number(s): " + ", ".join(map(lambda a : str(a+1),output_failures)))
 
 # ==================================================================================
 #                                       EPILOGUE
