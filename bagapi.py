@@ -29,47 +29,39 @@ import os
 from datetime import datetime
 
 # Init logging (source: https://stackoverflow.com/a/24507130/20928224)
-
 if not os.path.exists("logs"):
     os.makedirs("logs")
 
 log_formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(message)s', datefmt='%d/%m/%Y %H:%M:%S')
 
 # File to log to
-
 logFile = datetime.now().strftime('logs/info_%H_%M_%d_%m_%Y.log')
 
 # Setup File handler
-
 file_handler = logging.FileHandler(logFile)
 file_handler.setFormatter(log_formatter)
 file_handler.setLevel(logging.INFO)
 
 # Setup Stream Handler (i.e. console)
-
 stream_handler = logging.StreamHandler()
 stream_handler.setFormatter(log_formatter)
 stream_handler.setLevel(logging.INFO)
 
-# Get our logger
-
+# Get the logger
 app_log = logging.getLogger('root')
 app_log.setLevel(logging.INFO)
 
 # Add both Handlers
-
 app_log.addHandler(file_handler)
 app_log.addHandler(stream_handler)
 
 logging.info("New run started")
 
 # Check config
-
 if config.api_key == "" or config.api_base_url == "" or config.csv_delimiter == "":
   logging.info("Fatal error: Invalid configuration in config.py.")
 
   # Quit app
-  
   quit()
 
 # Declare output
@@ -81,12 +73,10 @@ output_failures = []
 # ==================================================================================
 
 # Open input.csv
-
 with open('input.csv', newline='') as csvfile:
 
   reader = csv.DictReader(csvfile, delimiter=config.csv_delimiter)
   # Read it's content
-
   data = list(reader)
 
 # ==================================================================================
@@ -94,17 +84,14 @@ with open('input.csv', newline='') as csvfile:
 # ==================================================================================
 
 # Declare helper variables
-
 row_count = len(data)
 row_index = -1
 
-# User notification
-
+# Log info
 logging.info("Input file has been read.")
 logging.info("- Read {0} rows".format(row_count))
 
 # Check for valid data
-
 if row_count == 0:
   
   # No data has been found
@@ -132,7 +119,6 @@ for row in data:
   # ==================================================================================
 
   # Add all the parameters based on conditions
-
   params = {}
 
   if row.get('postcode', '') != "":
@@ -146,19 +132,16 @@ for row in data:
     query = '{0} {1}'.format(row['postcode'], row['huisnummer'])
 
     # Optionally add huisnummertoevoeging
-
     if row.get('huisnummertoevoeging', "") != "":
       params['huisletter'] = row['huisnummertoevoeging']
 
   else:
 
     # Postcode is not given, search based on query
-
     query = '{0} {1}{2}, {3}'.format(row['straat'], row['huisnummer'], row['huisnummertoevoeging'], row['stad'])
     params['q'] = query
 
   # Search request for the adres (according to https://lvbag.github.io/BAG-API/Technische%20specificatie/#/Adres/bevraagAdressen)
-
   adres_response = requests.get(
     config.api_base_url + "adressen",
     params=params,
@@ -168,18 +151,15 @@ for row in data:
   )
 
   # Parse the data. It's a JSON response, so use that
-
   adres_data = adres_response.json()
 
   # Check if the request went well
-
   if adres_response.status_code != 200:
+
     # Something went wrong
-    
     logging.info('- Error: {1}'.format(row_index, adres_data['title']))
 
     # Stop here, and continue with the next row
-
     output_failures.append(row_index)
     continue
 
@@ -190,12 +170,10 @@ for row in data:
     logging.info("- Error: address {0} was not found.".format(query))
 
     # Stop here, contiue on new row
-    
     output_failures.append(row_index)
     continue
 
   # Get some data
-
   adres_object = adres_data['_embedded']['adressen'][0]
   korteNaam = adres_object['korteNaam']
   huisnummer = adres_object['huisnummer']
@@ -204,7 +182,6 @@ for row in data:
   postcode = adres_object['postcode']
 
   # Mechanism to check if search query found the right result
-  
   full_huisnummer = str(huisnummer) + huisnummertoevoeging.lower()
   full_huisnummer_row = row['huisnummer'] + row['huisnummertoevoeging'].lower()
 
@@ -212,12 +189,10 @@ for row in data:
     logging.info("- Error: address was not found and so another address was returned by the API instead (expected huisnummer {0}, got {1}).".format(full_huisnummer_row, full_huisnummer))
 
     # Stop here, and continue with next row
-
     output_failures.append(row_index)
     continue
 
-  # User notification
-  
+  # Log info
   friendly_address = "{0} {1}{2}, {3} {4}".format(korteNaam, huisnummer, huisnummertoevoeging, postcode, woonplaats);
   logging.info("- Address is: " + friendly_address)
 
@@ -226,7 +201,6 @@ for row in data:
   # ==================================================================================
 
   # Get pand of adres (according to https://lvbag.github.io/BAG-API/Technische%20specificatie/#/Pand/pandIdentificatie)
-
   pand_response = requests.get(
     adres_object['_links']['panden'][0]['href'],
     headers={
@@ -236,11 +210,9 @@ for row in data:
   )
 
   # Parse json data
-
   pand_data = pand_response.json()
 
   # Get some data
-
   pandId = pand_data['pand']['identificatie']
   bouwjaar = pand_data['pand']['oorspronkelijkBouwjaar']
 
@@ -251,12 +223,10 @@ for row in data:
   # ==================================================================================
 
   # Get verblijfsobjecten of pand (according to https://lvbag.github.io/BAG-API/Technische%20specificatie/#/Verblijfsobject/zoekVerblijfsobjecten)
-
   verblijfsobjecten_page = 0
   verblijfsobjecten_count = 0
 
   # Create seamingly infinite loop that gets broken where needed
-
   while True:
 
     verblijfsobjecten_page += 1
@@ -276,7 +246,6 @@ for row in data:
     )
 
     # Parse the data
-
     verblijfsobjecten_data = verblijfsobjecten_response.json()
 
     # If _embedded column, there were no objects on this 'page'
@@ -321,11 +290,9 @@ for row in data:
     if verblijfsobjecten_count > 1: # Pand contains multiple verblijfsobjecten
 
       # Loop through each verblijfsobject in pand
-
       for verblijfsobject in verblijfsobjecten:
 
         # Write data to file
-
         output_rows.append({
           'postcode': verblijfsobject['_embedded']['heeftAlsHoofdAdres']['nummeraanduiding'].get('postcode', ''),
           'huisnummer': verblijfsobject['_embedded']['heeftAlsHoofdAdres']['nummeraanduiding'].get('huisnummer', ''),
@@ -342,7 +309,6 @@ for row in data:
     # If count is not multiple of 100, there is probably more, 
     #   so continue loop to process next page.
     # Else, nothing to fetch so break the loop
-
     if verblijfsobjecten_count % 100 != 0:
       break
 
@@ -353,25 +319,22 @@ for row in data:
 # ==================================================================================
 
 # Open file to be written
-
 with open('output.csv', 'w', newline='') as csvfile:
     
     # Define what params should be written to output csv
-
     fieldnames = ['postcode', 'huisnummer', 'huisnummertoevoeging', 'straat', 'pandId', 'bouwjaar', 'verblijfsobjectId', 'oppervlakte', 'gebruiksdoel', 'status']
 
     writer = csv.DictWriter(csvfile, fieldnames=fieldnames, extrasaction='ignore', delimiter=config.csv_delimiter)
 
     # Write header line & all the rows
-
     writer.writeheader()
     writer.writerows(output_rows)
 
-# User notification
-
+# Log info
 logging.info("Processing done!")
 logging.info("- Written {0} csv rows ({1} failed rows were not written)".format(len(output_rows), len(output_failures)))
 
+# Log failed rows
 if len(output_failures) > 0:
   logging.info("- Failed input row number(s): " + ", ".join(map(lambda a : str(a+1),output_failures)))
 
