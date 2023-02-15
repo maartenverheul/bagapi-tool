@@ -1,3 +1,4 @@
 output.csv
 config.py
 __pycache__
+logs/

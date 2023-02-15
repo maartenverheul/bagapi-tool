@@ -24,21 +24,55 @@
 import requests # More information at https://realpython.com/python-requests/
 import csv # More information at https://realpython.com/python-csv/
 import config
+import logging
+import os
+from datetime import datetime
+
+# Init logging (source: https://stackoverflow.com/a/24507130/20928224)
+
+if not os.path.exists("logs"):
+    os.makedirs("logs")
+
+log_formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(message)s', datefmt='%d/%m/%Y %H:%M:%S')
+
+# File to log to
+
+logFile = datetime.now().strftime('logs/info_%H_%M_%d_%m_%Y.log')
+
+# Setup File handler
+
+file_handler = logging.FileHandler(logFile)
+file_handler.setFormatter(log_formatter)
+file_handler.setLevel(logging.INFO)
+
+# Setup Stream Handler (i.e. console)
+
+stream_handler = logging.StreamHandler()
+stream_handler.setFormatter(log_formatter)
+stream_handler.setLevel(logging.INFO)
+
+# Get our logger
+
+app_log = logging.getLogger('root')
+app_log.setLevel(logging.INFO)
+
+# Add both Handlers
+
+app_log.addHandler(file_handler)
+app_log.addHandler(stream_handler)
+
+logging.info("New run started")
 
 # Check config
-if config.api_key == "" or config.api_base_url == "":
-  print("Fatal error: no API key or base url specified in config.py.")
+
+if config.api_key == "" or config.api_base_url == "" or config.csv_delimiter == "":
+  logging.info("Fatal error: Invalid configuration in config.py.")
 
   # Quit app
-
+  
   quit()
 
-# Declare static variables
-
-csv_delimiter=';'
-
 # Declare output
-
 output_rows = []
 output_failures = []
 
@@ -50,7 +84,7 @@ output_failures = []
 
 with open('input.csv', newline='') as csvfile:
 
-  reader = csv.DictReader(csvfile, delimiter=csv_delimiter)
+  reader = csv.DictReader(csvfile, delimiter=config.csv_delimiter)
   # Read it's content
 
   data = list(reader)
@@ -66,22 +100,22 @@ row_index = -1
 
 # User notification
 
-print("Input file has been read.")
-print("- Read {0} rows".format(row_count))
+logging.info("Input file has been read.")
+logging.info("- Read {0} rows".format(row_count))
 
 # Check for valid data
 
 if row_count == 0:
   
   # No data has been found
-  print("- Fatal error: no data found in input.csv")
+  logging.info("- Fatal error: no data found in input.csv")
 
   # Can't do anything now, quit program
   quit()
 if row_count > 0 and data[0].get('huisnummer', '') == "":
 
   # Something is wrong with the data
-  print("- Fatal error: 'huisnummer' column is missing. Did you specify the right csv delimiter?".format(row_count))
+  logging.info("- Fatal error: 'huisnummer' column is missing. Did you specify the right csv delimiter?".format(row_count))
 
   # Can't do anything now, quit program
   quit()
@@ -91,7 +125,7 @@ if row_count > 0 and data[0].get('huisnummer', '') == "":
 for row in data:
 
   row_index += 1
-  print('Processing row {0}/{1} ({2}%)'.format(row_index+1, row_count, round(row_index/row_count*100)))
+  logging.info('Processing row {0}/{1} ({2}%)'.format(row_index+1, row_count, round(row_index/row_count*100)))
 
   # ==================================================================================
   #                                    SEARCH FOR ADRES
@@ -142,7 +176,7 @@ for row in data:
   if adres_response.status_code != 200:
     # Something went wrong
     
-    print('- Error: {1}'.format(row_index, adres_data['title']))
+    logging.info('- Error: {1}'.format(row_index, adres_data['title']))
 
     # Stop here, and continue with the next row
 
@@ -153,7 +187,7 @@ for row in data:
 
   # _embedded column won't be there if no results are given
   if adres_data.get('_embedded', '') == "":
-    print("- Error: address {0} was not found.".format(query))
+    logging.info("- Error: address {0} was not found.".format(query))
 
     # Stop here, contiue on new row
     
@@ -175,7 +209,7 @@ for row in data:
   full_huisnummer_row = row['huisnummer'] + row['huisnummertoevoeging'].lower()
 
   if full_huisnummer != full_huisnummer_row: # Is mismatch
-    print("- Error: address was not found and so another address was returned by the API instead (expected huisnummer {0}, got {1}).".format(full_huisnummer_row, full_huisnummer))
+    logging.info("- Error: address was not found and so another address was returned by the API instead (expected huisnummer {0}, got {1}).".format(full_huisnummer_row, full_huisnummer))
 
     # Stop here, and continue with next row
 
@@ -185,7 +219,7 @@ for row in data:
   # User notification
   
   friendly_address = "{0} {1}{2}, {3} {4}".format(korteNaam, huisnummer, huisnummertoevoeging, postcode, woonplaats);
-  print("- Address is: " + friendly_address)
+  logging.info("- Address is: " + friendly_address)
 
   # ==================================================================================
   #                                    GET PAND
@@ -210,7 +244,7 @@ for row in data:
   pandId = pand_data['pand']['identificatie']
   bouwjaar = pand_data['pand']['oorspronkelijkBouwjaar']
 
-  print("- Found pand: {0}".format(pandId))
+  logging.info("- Found pand: {0}".format(pandId))
 
   # ==================================================================================
   #                           GET VERBLIJFSOBJECTEN AT PAND
@@ -312,7 +346,7 @@ for row in data:
     if verblijfsobjecten_count % 100 != 0:
       break
 
-  print("- Found {0} verblijfsobjecten at pand (spread over {1} pages)".format(verblijfsobjecten_count, verblijfsobjecten_page))
+  logging.info("- Found {0} verblijfsobjecten at pand (spread over {1} pages)".format(verblijfsobjecten_count, verblijfsobjecten_page))
 
 # ==================================================================================
 #                                 OUTPUT PHASE
@@ -326,7 +360,7 @@ with open('output.csv', 'w', newline='') as csvfile:
 
     fieldnames = ['postcode', 'huisnummer', 'huisnummertoevoeging', 'straat', 'pandId', 'bouwjaar', 'verblijfsobjectId', 'oppervlakte', 'gebruiksdoel', 'status']
 
-    writer = csv.DictWriter(csvfile, fieldnames=fieldnames, extrasaction='ignore', delimiter=csv_delimiter)
+    writer = csv.DictWriter(csvfile, fieldnames=fieldnames, extrasaction='ignore', delimiter=config.csv_delimiter)
 
     # Write header line & all the rows
 
@@ -335,11 +369,11 @@ with open('output.csv', 'w', newline='') as csvfile:
 
 # User notification
 
-print("Processing done!")
-print("- Written {0} csv rows ({1} failed rows were not written)".format(len(output_rows), len(output_failures)))
+logging.info("Processing done!")
+logging.info("- Written {0} csv rows ({1} failed rows were not written)".format(len(output_rows), len(output_failures)))
 
 if len(output_failures) > 0:
-  print("- Failed input row number(s): " + ", ".join(map(lambda a : str(a+1),output_failures)))
+  logging.info("- Failed input row number(s): " + ", ".join(map(lambda a : str(a+1),output_failures)))
 
 # ==================================================================================
 #                                       EPILOGUE
