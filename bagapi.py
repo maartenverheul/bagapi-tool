@@ -342,7 +342,7 @@ if len(output_failures) > 0:
 # to an end. I hope you will have fun with it.
 #
 # With ease,
-# Maarten
+# 𝓜𝓪𝓪𝓻𝓽𝓮𝓷
 #
 # Hmmm, time for some coffee.
 #                               ░░              ░░              ░░                                
