@@ -211,77 +211,101 @@ for row in data:
 
   # Get verblijfsobjecten of pand (according to https://lvbag.github.io/BAG-API/Technische%20specificatie/#/Verblijfsobject/zoekVerblijfsobjecten)
 
-  verblijfsobjecten_response = requests.get(
-    config.api_base_url + "verblijfsobjecten",
-    params={
-    'pandIdentificatie': pandId,
-    'expand': 'heeftAlsHoofdAdres',
-    'pageSize': 100 # Maximum of verblijfsobjecten per call
-    },
-    headers={
-    'X-Api-Key': config.api_key,
-    'Accept-Crs': 'epsg:28992'
-    }
-  )
+  verblijfsobjecten_page = 0
+  verblijfsobjecten_count = 0
 
-  # Parse the data
+  # Create seamingly infinite loop that gets broken where needed
 
-  verblijfsobjecten_data = verblijfsobjecten_response.json()
-  verblijfsobjecten = verblijfsobjecten_data['_embedded']['verblijfsobjecten']
-  verblijfsobjecten_count = len(verblijfsobjecten)
+  while True:
 
-  # Data to be extracted:
-  #
-  # - Postcode
-  # - PandID
-  # - Bouwjaar
-  #
-  # For every verblijfsobject:
-  #
-  # - Verblijfsobject ID
-  # - Huisnummer
-  # - Oppervlakte
-  # - Gebruiksdoel
-  # - Status
+    verblijfsobjecten_page += 1
 
-  print("- Found {0} verblijfsobjecten at pand".format(verblijfsobjecten_count))
+    verblijfsobjecten_response = requests.get(
+      config.api_base_url + "verblijfsobjecten",
+      params={
+      'pandIdentificatie': pandId,
+      'expand': 'heeftAlsHoofdAdres',
+      'pageSize': 100, # Maximum of verblijfsobjecten per call
+      'page': verblijfsobjecten_page
+      },
+      headers={
+      'X-Api-Key': config.api_key,
+      'Accept-Crs': 'epsg:28992'
+      }
+    )
 
-  if verblijfsobjecten_count == 1: # Pand contains only a single verblijfsobject
+    # Parse the data
 
-      verblijfsobject = verblijfsobjecten[0]['verblijfsobject']
-      output_rows.append({
-      'postcode': postcode,
-      'huisnummer': huisnummer,
-      'huisnummertoevoeging': huisnummertoevoeging,
-      'straat': korteNaam,
-      'pandId': pandId,
-      'bouwjaar': bouwjaar,
-      'verblijfsobjectId': verblijfsobject['identificatie'],
-      'oppervlakte': verblijfsobject['oppervlakte'],
-      'gebruiksdoel': verblijfsobject['gebruiksdoelen'][0],
-      'status': verblijfsobject['status'],
-    })
-      
-  if verblijfsobjecten_count > 1: # Pand contains multiple verblijfsobjecten
+    verblijfsobjecten_data = verblijfsobjecten_response.json()
 
-    # Loop through each verblijfsobject in pand
+    # If _embedded column, there were no objects on this 'page'
+    if verblijfsobjecten_data.get('_embedded', '') == "":
+      # Decrease page for logging
+      verblijfsobjecten_page -= 1
+      break
 
-    for verblijfsobject in verblijfsobjecten:
+    verblijfsobjecten = verblijfsobjecten_data['_embedded']['verblijfsobjecten']
+    verblijfsobjecten_count += len(verblijfsobjecten)
 
-      # Write data to file
+    # Data to be extracted:
+    #
+    # - Postcode
+    # - PandID
+    # - Bouwjaar
+    #
+    # For every verblijfsobject:
+    #
+    # - Verblijfsobject ID
+    # - Huisnummer
+    # - Oppervlakte
+    # - Gebruiksdoel
+    # - Status
 
-      output_rows.append({
-        'postcode': verblijfsobject['_embedded']['heeftAlsHoofdAdres']['nummeraanduiding'].get('postcode', ''),
-        'huisnummer': verblijfsobject['_embedded']['heeftAlsHoofdAdres']['nummeraanduiding'].get('huisnummer', ''),
-        'huisnummertoevoeging': verblijfsobject['_embedded']['heeftAlsHoofdAdres']['nummeraanduiding'].get('huisletter', ''),
+    if verblijfsobjecten_count == 1: # Pand contains only a single verblijfsobject
+
+        verblijfsobject = verblijfsobjecten[0]['verblijfsobject']
+        output_rows.append({
+        'postcode': postcode,
+        'huisnummer': huisnummer,
+        'huisnummertoevoeging': huisnummertoevoeging,
         'straat': korteNaam,
         'pandId': pandId,
         'bouwjaar': bouwjaar,
-        'verblijfsobjectId': verblijfsobject['verblijfsobject'].get('identificatie', ''),
-        'oppervlakte': verblijfsobject['verblijfsobject'].get('oppervlakte', ''),
-        'gebruiksdoel': verblijfsobject['verblijfsobject'].get('gebruiksdoelen', [])[0],
-        'status': verblijfsobject['verblijfsobject'].get('status', ''),
+        'verblijfsobjectId': verblijfsobject['identificatie'],
+        'oppervlakte': verblijfsobject['oppervlakte'],
+        'gebruiksdoel': verblijfsobject['gebruiksdoelen'][0],
+        'status': verblijfsobject['status'],
       })
+        
+    if verblijfsobjecten_count > 1: # Pand contains multiple verblijfsobjecten
+
+      # Loop through each verblijfsobject in pand
+
+      for verblijfsobject in verblijfsobjecten:
+
+        # Write data to file
+
+        output_rows.append({
+          'postcode': verblijfsobject['_embedded']['heeftAlsHoofdAdres']['nummeraanduiding'].get('postcode', ''),
+          'huisnummer': verblijfsobject['_embedded']['heeftAlsHoofdAdres']['nummeraanduiding'].get('huisnummer', ''),
+          'huisnummertoevoeging': verblijfsobject['_embedded']['heeftAlsHoofdAdres']['nummeraanduiding'].get('huisletter', ''),
+          'straat': korteNaam,
+          'pandId': pandId,
+          'bouwjaar': bouwjaar,
+          'verblijfsobjectId': verblijfsobject['verblijfsobject'].get('identificatie', ''),
+          'oppervlakte': verblijfsobject['verblijfsobject'].get('oppervlakte', ''),
+          'gebruiksdoel': verblijfsobject['verblijfsobject'].get('gebruiksdoelen', [])[0],
+          'status': verblijfsobject['verblijfsobject'].get('status', ''),
+        })
+
+    # If count is not multiple of 100, there is probably more, 
+    #   so continue loop to process next page.
+    # Else, nothing to fetch so break the loop
+
+    if verblijfsobjecten_count % 100 != 0:
+      break
+
+  print("- Found {0} verblijfsobjecten at pand (spread over {1} pages)".format(verblijfsobjecten_count, verblijfsobjecten_page))
 
 # ==================================================================================
 #                                 OUTPUT PHASE
