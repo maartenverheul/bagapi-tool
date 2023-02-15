@@ -71,6 +71,13 @@ print("- Read {0} rows".format(row_count))
 
 # Check for valid data
 
+if row_count == 0:
+  
+  # No data has been found
+  print("- Fatal error: no data found in input.csv")
+
+  # Can't do anything now, quit program
+  quit()
 if row_count > 0 and data[0].get('huisnummer', '') == "":
 
   # Something is wrong with the data
