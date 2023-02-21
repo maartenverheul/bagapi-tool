@@ -10,7 +10,7 @@
 # Take a look at the following case. Thanks to an API many
 # manhours can be spend in a better way. And boi is it fast.
 #
-# By the way, this script is version 1.6
+# By the way, this script is version 1.8
 # and is made by Maarten Verheul
 #
 # So, fasten your seatbelts, he we go:
