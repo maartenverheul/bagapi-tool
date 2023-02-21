@@ -67,6 +67,7 @@ if config.api_key == "" or config.api_base_url == "" or config.csv_delimiter == 
 # Declare output
 output_rows = []
 output_failures = []
+output_skips = []
 
 # ==================================================================================
 #                                    FILE PHASE
@@ -124,7 +125,6 @@ for row in data:
   if row.get('postcode', '') != "":
 
     # Postcode is given
-
     params['postcode'] = row['postcode']
     params['huisnummer'] = row['huisnummer']
     params['exacteMatch'] = 'true'
@@ -140,6 +140,22 @@ for row in data:
     # Postcode is not given, search based on query
     query = '{0} {1}{2}, {3}'.format(row['straat'], row['huisnummer'], row['huisnummertoevoeging'], row['stad'])
     params['q'] = query
+
+  # Check if adress has already been processed based on postcode + huisnummer
+  is_duplicate = False
+  for output_row in output_rows:
+    a = row['postcode'] + str(row['huisnummer']) + row['huisnummertoevoeging']
+    b = output_row['postcode'] + str(output_row['huisnummer']) + output_row['huisnummertoevoeging']
+    if a == b:
+      is_duplicate = True
+      break
+
+  if is_duplicate:
+    logging.info("- Address already processed. Skipping row.")
+
+    # Stop here, and continue with next row
+    output_skips.append(row_index)
+    continue
 
   # Search request for the adres (according to https://lvbag.github.io/BAG-API/Technische%20specificatie/#/Adres/bevraagAdressen)
   adres_response = requests.get(
@@ -180,10 +196,24 @@ for row in data:
   woonplaats = adres_object['woonplaatsNaam']
   huisnummertoevoeging = adres_object.get('huisletter', '')
   postcode = adres_object['postcode']
+  pandId = adres_object['pandIdentificaties'][0]
 
   # Mechanism to check if search query found the right result
   full_huisnummer = str(huisnummer) + huisnummertoevoeging.lower()
   full_huisnummer_row = row['huisnummer'] + row['huisnummertoevoeging'].lower()
+
+  # Check if pand has already been processed based on pandId
+  for output_row in output_rows:
+    if pandId == output_row['pandId']:
+      is_duplicate = True
+      break 
+
+  if is_duplicate:
+    logging.info("- Pand already processed. Skipping row.")
+
+    # Stop here, and continue with next row
+    output_skips.append(row_index)
+    continue
 
   if full_huisnummer != full_huisnummer_row: # Is mismatch
     logging.info("- Error: address was not found and so another address was returned by the API instead (expected huisnummer {0}, got {1}).".format(full_huisnummer_row, full_huisnummer))
@@ -307,7 +337,6 @@ for row in data:
           'status': verblijfsobject['verblijfsobject'].get('status', ''),
         })
 
-
         # Add column that indicates that a row was the original address
         full_verblijfsobject_huisnummer_row = str(output_rows[-1].get('huisnummer', '')) + output_rows[-1].get('huisnummertoevoeging', '').lower()
         output_rows[-1]['is_invoer'] = full_verblijfsobject_huisnummer_row == full_huisnummer
@@ -337,7 +366,7 @@ with open('output.csv', 'w', newline='') as csvfile:
     writer.writerows(output_rows)
 
 # Log info
-logging.info("Processing done!")
+logging.info("Processing done (100%)")
 logging.info("- Written {0} csv rows ({1} failed rows were not written)".format(len(output_rows), len(output_failures)))
 
 # Log failed rows
