@@ -292,7 +292,7 @@ for row in data:
 
     if perceel_response.status_code != 200:
       # Something went wrong
-      logging.info("- GOB API error: \"{0}\"".format(perceel_data['message']))
+      logging.info("- GOB API error on bagId \"{0}\": \"{1}\"".format(nummeraanduiding, perceel_data['message']))
 
     else:
 
