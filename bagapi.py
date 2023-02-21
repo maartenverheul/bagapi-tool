@@ -369,7 +369,7 @@ with open('output.csv', 'w', newline='') as csvfile:
 
 # Log info
 logging.info("Processing done (100%)")
-logging.info("- Written {0} csv rows ({1} failed rows were not written)".format(len(output_rows), len(output_failures)))
+logging.info("- Written {0} csv rows (Input: {1} failed & {2} skipped duplicates)".format(len(output_rows), len(output_failures), len(output_skips)))
 
 # Log failed rows
 if len(output_failures) > 0:
