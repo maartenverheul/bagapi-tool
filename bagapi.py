@@ -374,6 +374,7 @@ for row in data:
         output_rows.append({
         'postcode': postcode,
         'straat': korteNaam,
+        'woonplaats': woonplaats,
         'pandId': pandId,
         'bouwjaar': bouwjaar,
         'sectie': perceel_section,
@@ -399,6 +400,7 @@ for row in data:
         output_rows.append({
           'postcode': verblijfsobject['_embedded']['heeftAlsHoofdAdres']['nummeraanduiding'].get('postcode', ''),
           'straat': korteNaam,
+          'woonplaats': woonplaats,
           'pandId': pandId,
           'bouwjaar': bouwjaar,
           'sectie': perceel_section,
@@ -434,7 +436,7 @@ for row in data:
 with open('output.csv', 'w', newline='') as csvfile:
     
     # Define what params should be written to output csv
-    fieldnames = ['postcode', 'huisnummer', 'huisnummertoevoeging', 'straat', 'pandId', 'bouwjaar', 'verblijfsobjectId', 'oppervlakte', 'gebruiksdoel', 'status', 'is_invoer', 'sectie', 'perceelnummer', 'perceeloppervlakte', 'perceelomschrijving', 'perceel_energielabel']
+    fieldnames = ['postcode', 'huisnummer', 'huisnummertoevoeging', 'straat', 'woonplaats', 'pandId', 'bouwjaar', 'verblijfsobjectId', 'oppervlakte', 'gebruiksdoel', 'status', 'is_invoer', 'sectie', 'perceelnummer', 'perceeloppervlakte', 'perceelomschrijving', 'perceel_energielabel']
 
     writer = csv.DictWriter(csvfile, fieldnames=fieldnames, extrasaction='ignore', delimiter=config.csv_delimiter)
 
