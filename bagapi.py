@@ -148,6 +148,7 @@ for row in data:
     b = output_row['postcode'] + str(output_row['huisnummer']) + output_row['huisnummertoevoeging']
     if a == b:
       is_duplicate = True
+      output_row['is_invoer'] = True
       break
 
   if is_duplicate:
@@ -206,6 +207,7 @@ for row in data:
   for output_row in output_rows:
     if pandId == output_row['pandId']:
       is_duplicate = True
+      output_row['is_invoer'] = True
       break 
 
   if is_duplicate:
