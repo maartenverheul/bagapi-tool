@@ -285,6 +285,7 @@ for row in data:
         'oppervlakte': verblijfsobject['oppervlakte'],
         'gebruiksdoel': verblijfsobject['gebruiksdoelen'][0],
         'status': verblijfsobject['status'],
+        'is_invoer': True
       })
         
     if verblijfsobjecten_count > 1: # Pand contains multiple verblijfsobjecten
@@ -306,6 +307,10 @@ for row in data:
           'status': verblijfsobject['verblijfsobject'].get('status', ''),
         })
 
+        full_verblijfsobject_huisnummer_row = str(output_rows[-1].get('huisnummer', '')) + output_rows[-1].get('huisnummertoevoeging', '').lower()
+
+        output_rows[-1]['is_invoer'] = full_verblijfsobject_huisnummer_row == full_huisnummer
+
     # If count is not multiple of 100, there is probably more, 
     #   so continue loop to process next page.
     # Else, nothing to fetch so break the loop
@@ -322,7 +327,7 @@ for row in data:
 with open('output.csv', 'w', newline='') as csvfile:
     
     # Define what params should be written to output csv
-    fieldnames = ['postcode', 'huisnummer', 'huisnummertoevoeging', 'straat', 'pandId', 'bouwjaar', 'verblijfsobjectId', 'oppervlakte', 'gebruiksdoel', 'status']
+    fieldnames = ['postcode', 'huisnummer', 'huisnummertoevoeging', 'straat', 'pandId', 'bouwjaar', 'verblijfsobjectId', 'oppervlakte', 'gebruiksdoel', 'status', 'is_invoer']
 
     writer = csv.DictWriter(csvfile, fieldnames=fieldnames, extrasaction='ignore', delimiter=config.csv_delimiter)
 
