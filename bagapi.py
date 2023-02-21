@@ -198,6 +198,7 @@ for row in data:
   huisnummertoevoeging = adres_object.get('huisletter', '')
   postcode = adres_object['postcode']
   pandId = adres_object['pandIdentificaties'][0]
+  nummeraanduiding = adres_object['nummeraanduidingIdentificatie']
 
   # Mechanism to check if search query found the right result
   full_huisnummer = str(huisnummer) + huisnummertoevoeging.lower()
@@ -249,6 +250,70 @@ for row in data:
   bouwjaar = pand_data['pand']['oorspronkelijkBouwjaar']
 
   logging.info("- Found pand: {0}".format(pandId))
+
+  # ==================================================================================
+  #                                   GET PERCEEL
+  # ==================================================================================
+
+  # Init variables
+  perceel_section = ""
+  perceel_number = ""
+  perceel_size = ""
+  perceel_description = ""
+  perceel_energy = ""
+
+  # Optionally skip
+  if not config.skip_perceel:
+
+    # Body data to send with gob request
+    perceel_request_data = {
+      "bagId": nummeraanduiding,
+      "selection": [
+        {
+          "code": "buurtstatistieken",
+          "deliver": "partialProduct",
+          "purposeLimitations": []
+        }
+      ],
+      "includePdf": False
+    }
+
+    # Make request
+    perceel_response = requests.post(
+      config.gob_api_base_url + "report",
+      json = perceel_request_data,
+      headers = {
+      'X-Api-Key': config.gob_api_key
+      }
+    )
+
+    # Parse data from json
+    perceel_data = perceel_response.json()
+
+    if perceel_response.status_code != 200:
+      # Something went wrong
+      logging.info("- GOB API error: \"{0}\"".format(perceel_data['message']))
+
+    else:
+
+      if 'general' in perceel_data['document']:
+
+        # Take data needed
+        perceelaanduiding = perceel_data['document']['general']['kadastraleAanduiding']['kadastraleAanduiding']
+        perceel_section = perceelaanduiding.split()[1]
+        perceel_number = perceelaanduiding.split()[2]
+        perceel_size = float(perceel_data['document']['general']['size'])
+        perceel_description = perceel_data['document']['general']['omschrijving']
+        perceel_energy = perceel_data['document']['general']['energieLabel']
+
+        # If no energielabel, make it empty instead of given text
+        if "geen energielabel" in perceel_energy:
+          perceel_energy = ""
+
+      else:
+
+        logging.info("- Perceel data for bagId \"{0}\" was not given".format(nummeraanduiding))
+
 
   # ==================================================================================
   #                           GET VERBLIJFSOBJECTEN AT PAND
@@ -308,11 +373,16 @@ for row in data:
         verblijfsobject = verblijfsobjecten[0]['verblijfsobject']
         output_rows.append({
         'postcode': postcode,
-        'huisnummer': huisnummer,
-        'huisnummertoevoeging': huisnummertoevoeging,
         'straat': korteNaam,
         'pandId': pandId,
         'bouwjaar': bouwjaar,
+        'sectie': perceel_section,
+        'perceelnummer': perceel_number,
+        'perceeloppervlakte': perceel_size,
+        'perceelomschrijving': perceel_description,
+        'perceel_energielabel': perceel_energy,
+        'huisnummer': huisnummer,
+        'huisnummertoevoeging': huisnummertoevoeging,
         'verblijfsobjectId': verblijfsobject['identificatie'],
         'oppervlakte': verblijfsobject['oppervlakte'],
         'gebruiksdoel': verblijfsobject['gebruiksdoelen'][0],
@@ -328,11 +398,16 @@ for row in data:
         # Write data to file
         output_rows.append({
           'postcode': verblijfsobject['_embedded']['heeftAlsHoofdAdres']['nummeraanduiding'].get('postcode', ''),
-          'huisnummer': verblijfsobject['_embedded']['heeftAlsHoofdAdres']['nummeraanduiding'].get('huisnummer', ''),
-          'huisnummertoevoeging': verblijfsobject['_embedded']['heeftAlsHoofdAdres']['nummeraanduiding'].get('huisletter', ''),
           'straat': korteNaam,
           'pandId': pandId,
           'bouwjaar': bouwjaar,
+          'sectie': perceel_section,
+          'perceelnummer': perceel_number,
+          'perceeloppervlakte': perceel_size,
+          'perceelomschrijving': perceel_description,
+          'perceel_energielabel': perceel_energy,
+          'huisnummer': verblijfsobject['_embedded']['heeftAlsHoofdAdres']['nummeraanduiding'].get('huisnummer', ''),
+          'huisnummertoevoeging': verblijfsobject['_embedded']['heeftAlsHoofdAdres']['nummeraanduiding'].get('huisletter', ''),
           'verblijfsobjectId': verblijfsobject['verblijfsobject'].get('identificatie', ''),
           'oppervlakte': verblijfsobject['verblijfsobject'].get('oppervlakte', ''),
           'gebruiksdoel': verblijfsobject['verblijfsobject'].get('gebruiksdoelen', [])[0],
@@ -359,7 +434,7 @@ for row in data:
 with open('output.csv', 'w', newline='') as csvfile:
     
     # Define what params should be written to output csv
-    fieldnames = ['postcode', 'huisnummer', 'huisnummertoevoeging', 'straat', 'pandId', 'bouwjaar', 'verblijfsobjectId', 'oppervlakte', 'gebruiksdoel', 'status', 'is_invoer']
+    fieldnames = ['postcode', 'huisnummer', 'huisnummertoevoeging', 'straat', 'pandId', 'bouwjaar', 'verblijfsobjectId', 'oppervlakte', 'gebruiksdoel', 'status', 'is_invoer', 'sectie', 'perceelnummer', 'perceeloppervlakte', 'perceelomschrijving', 'perceel_energielabel']
 
     writer = csv.DictWriter(csvfile, fieldnames=fieldnames, extrasaction='ignore', delimiter=config.csv_delimiter)
 
