@@ -307,8 +307,9 @@ for row in data:
           'status': verblijfsobject['verblijfsobject'].get('status', ''),
         })
 
-        full_verblijfsobject_huisnummer_row = str(output_rows[-1].get('huisnummer', '')) + output_rows[-1].get('huisnummertoevoeging', '').lower()
 
+        # Add column that indicates that a row was the original address
+        full_verblijfsobject_huisnummer_row = str(output_rows[-1].get('huisnummer', '')) + output_rows[-1].get('huisnummertoevoeging', '').lower()
         output_rows[-1]['is_invoer'] = full_verblijfsobject_huisnummer_row == full_huisnummer
 
     # If count is not multiple of 100, there is probably more, 
