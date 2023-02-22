@@ -132,8 +132,10 @@ for row in data:
     query = '{0} {1}'.format(row['postcode'], row['huisnummer'])
 
     # Optionally add huisnummertoevoeging
+    if row.get('huisletter', "") != "":
+      params['huisletter'] = row['huisletter']
     if row.get('huisnummertoevoeging', "") != "":
-      params['huisletter'] = row['huisnummertoevoeging']
+      params['huisnummertoevoeging'] = row['huisnummertoevoeging']
 
   else:
 
@@ -144,8 +146,8 @@ for row in data:
   # Check if adress has already been processed based on postcode + huisnummer
   is_duplicate = False
   for output_row in output_rows:
-    a = row['postcode'] + str(row['huisnummer']) + row['huisnummertoevoeging']
-    b = output_row['postcode'] + str(output_row['huisnummer']) + output_row['huisnummertoevoeging']
+    a = row['postcode'] + str(row['huisnummer']) + row['huisletter'] + row['huisnummertoevoeging']
+    b = output_row['postcode'] + str(output_row['huisnummer']) + output_row['huisletter'] + output_row['huisnummertoevoeging']
     if a == b:
       is_duplicate = True
       output_row['is_invoer'] = True
@@ -195,14 +197,15 @@ for row in data:
   korteNaam = adres_object['korteNaam']
   huisnummer = adres_object['huisnummer']
   woonplaats = adres_object['woonplaatsNaam']
-  huisnummertoevoeging = adres_object.get('huisletter', '')
+  huisletter = adres_object.get('huisletter', '')
+  huisnummertoevoeging = adres_object.get('huisnummertoevoeging', '')
   postcode = adres_object['postcode']
   pandId = adres_object['pandIdentificaties'][0]
   nummeraanduiding = adres_object['nummeraanduidingIdentificatie']
 
   # Mechanism to check if search query found the right result
-  full_huisnummer = str(huisnummer) + huisnummertoevoeging.lower()
-  full_huisnummer_row = row['huisnummer'] + row['huisnummertoevoeging'].lower()
+  full_huisnummer = str(huisnummer) + huisletter.lower() + huisnummertoevoeging.lower()
+  full_huisnummer_row = row['huisnummer'] + row['huisletter'].lower() + row['huisnummertoevoeging'].lower()
 
   # Check if pand has already been processed based on pandId
   for output_row in output_rows:
@@ -226,7 +229,7 @@ for row in data:
     continue
 
   # Log info
-  friendly_address = "{0} {1}{2}, {3} {4}".format(korteNaam, huisnummer, huisnummertoevoeging, postcode, woonplaats);
+  friendly_address = "{0} {1}{2}{3}, {4} {5}".format(korteNaam, huisnummer, huisletter, huisnummertoevoeging, postcode, woonplaats);
   logging.info("- Address is: " + friendly_address)
 
   # ==================================================================================
@@ -383,6 +386,7 @@ for row in data:
         'perceelomschrijving': perceel_description,
         'perceel_energielabel': perceel_energy,
         'huisnummer': huisnummer,
+        'huisletter': huisletter,
         'huisnummertoevoeging': huisnummertoevoeging,
         'verblijfsobjectId': verblijfsobject['identificatie'],
         'oppervlakte': verblijfsobject['oppervlakte'],
@@ -409,7 +413,8 @@ for row in data:
           'perceelomschrijving': perceel_description,
           'perceel_energielabel': perceel_energy,
           'huisnummer': verblijfsobject['_embedded']['heeftAlsHoofdAdres']['nummeraanduiding'].get('huisnummer', ''),
-          'huisnummertoevoeging': verblijfsobject['_embedded']['heeftAlsHoofdAdres']['nummeraanduiding'].get('huisletter', ''),
+          'huisletter': verblijfsobject['_embedded']['heeftAlsHoofdAdres']['nummeraanduiding'].get('huisletter', ''),
+          'huisnummertoevoeging': verblijfsobject['_embedded']['heeftAlsHoofdAdres']['nummeraanduiding'].get('huisnummertoevoeging', ''),
           'verblijfsobjectId': verblijfsobject['verblijfsobject'].get('identificatie', ''),
           'oppervlakte': verblijfsobject['verblijfsobject'].get('oppervlakte', ''),
           'gebruiksdoel': verblijfsobject['verblijfsobject'].get('gebruiksdoelen', [])[0],
@@ -436,7 +441,7 @@ for row in data:
 with open('output.csv', 'w', newline='') as csvfile:
     
     # Define what params should be written to output csv
-    fieldnames = ['postcode', 'huisnummer', 'huisnummertoevoeging', 'straat', 'woonplaats', 'pandId', 'bouwjaar', 'verblijfsobjectId', 'oppervlakte', 'gebruiksdoel', 'status', 'is_invoer', 'sectie', 'perceelnummer', 'perceeloppervlakte', 'perceelomschrijving', 'perceel_energielabel']
+    fieldnames = ['postcode', 'huisnummer', 'huisletter', 'huisnummertoevoeging', 'straat', 'woonplaats', 'pandId', 'bouwjaar', 'verblijfsobjectId', 'oppervlakte', 'gebruiksdoel', 'status', 'is_invoer', 'sectie', 'perceelnummer', 'perceeloppervlakte', 'perceelomschrijving', 'perceel_energielabel']
 
     writer = csv.DictWriter(csvfile, fieldnames=fieldnames, extrasaction='ignore', delimiter=config.csv_delimiter)
 
